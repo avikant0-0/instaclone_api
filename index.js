@@ -22,6 +22,9 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cors());
 
+app.get("/", (req, res) => {
+  res.send(alrighty);
+});
 app.post("/createUser", (req, res) => {
   const body = req.body;
   // console.log(body);
