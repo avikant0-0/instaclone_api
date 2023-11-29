@@ -21,7 +21,7 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cors());
-
+const port = process.env.PORT || 3001;
 app.get("/", (req, res) => {
   res.send("alrighty");
 });
@@ -108,4 +108,4 @@ app.delete("/removeFollower", (req, res) => {
   removeFollower(body.user, body.id).then((data) => res.json(data));
 });
 
-app.listen(3001, () => console.log("started"));
+app.listen(port, () => console.log("started"));
