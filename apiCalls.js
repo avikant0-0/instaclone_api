@@ -74,9 +74,9 @@ functions.getAllPosts = () => {
 
 functions.getPostsOfFollowing = (username) => {
   return sanityClient.fetch(
-    `*[_type == "user" && user_name == $username] [0..49] | order(_createdAt desc){
+    `*[_type == "user" && user_name == &username ] {
       following[]->{
-        "posts": *[_type == "post" && references(^._id)]{
+        "posts": *[_type == "post" && references(^._id)][0..49] | order(_createdAt desc){
           ...,
           "username": author->user_name,
           photo{
