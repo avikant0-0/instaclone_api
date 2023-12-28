@@ -73,6 +73,7 @@ functions.getAllPosts = () => {
 };
 
 functions.getPostsOfFollowing = (username) => {
+  console.log(username);
   return sanityClient.fetch(
     `*[_type == "user" && user_name == &username ] {
       following[]->{
