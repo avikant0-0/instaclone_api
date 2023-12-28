@@ -60,7 +60,7 @@ functions.createPost = (user, caption, image) => {
 };
 
 functions.getAllPosts = () => {
-  return sanityClient.fetch(`*[_type == "post"] [0..49] | order(_createdAt desc){
+  return sanityClient.fetch(`*[_type == "post"]  | order(_createdAt desc){
       ...,
       "username": author->user_name,
       photo{
@@ -73,11 +73,10 @@ functions.getAllPosts = () => {
 };
 
 functions.getPostsOfFollowing = (username) => {
-  console.log(username);
   return sanityClient.fetch(
-    `*[_type == "user" && user_name == ${username}] {
+    `*[_type == "user" && user_name == $username]{
       following[]->{
-        "posts": *[_type == "post" && references(^._id)][0..49] | order(_createdAt desc){
+        "posts": *[_type == "post" && references(^._id)]{
           ...,
           "username": author->user_name,
           photo{
@@ -88,7 +87,8 @@ functions.getPostsOfFollowing = (username) => {
           }
         }
       }
-    }`
+    }`,
+    { username }
   );
 };
 
