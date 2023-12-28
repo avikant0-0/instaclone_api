@@ -75,7 +75,7 @@ functions.getAllPosts = () => {
 functions.getPostsOfFollowing = (username) => {
   console.log(username);
   return sanityClient.fetch(
-    `*[_type == "user" && user_name == &username ] {
+    `*[_type == "user" && user_name == ${username}] {
       following[]->{
         "posts": *[_type == "post" && references(^._id)][0..49] | order(_createdAt desc){
           ...,
@@ -88,8 +88,7 @@ functions.getPostsOfFollowing = (username) => {
           }
         }
       }
-    }`,
-    { username }
+    }`
   );
 };
 
