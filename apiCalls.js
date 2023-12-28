@@ -1,22 +1,22 @@
-  import { createReadStream } from "fs";
-  import sanityClient from "./client.js";
-  import { basename } from "path";
-  import { nanoid } from "nanoid";
-  const functions = {};
+import { createReadStream } from "fs";
+import sanityClient from "./client.js";
+import { basename } from "path";
+import { nanoid } from "nanoid";
+const functions = {};
 
-  functions.createUser = (firstName, lastName, userName) => {
-    return sanityClient.create({
-      _type: "user",
-      first_name: firstName,
-      last_name: lastName,
-      user_name: userName,
-      created_at: new Date(),
-    });
-  };
+functions.createUser = (firstName, lastName, userName) => {
+  return sanityClient.create({
+    _type: "user",
+    first_name: firstName,
+    last_name: lastName,
+    user_name: userName,
+    created_at: new Date(),
+  });
+};
 
-  functions.getProfile = (user) => {
-    return sanityClient.fetch(
-      `*[_type == "user" && user_name == $username]{
+functions.getProfile = (user) => {
+  return sanityClient.fetch(
+    `*[_type == "user" && user_name == $username]{
         ...,
         "following" : count(following),
         "followers" : *[_type == "user" && references(^._id)],
@@ -27,40 +27,40 @@
           } 
         }
       }`,
-      { username: user }
-    );
-  };
+    { username: user }
+  );
+};
 
-  functions.getUserId = (user) => {
-    return sanityClient.fetch(
-      `*[_type == "user" && user_name == $username]{
+functions.getUserId = (user) => {
+  return sanityClient.fetch(
+    `*[_type == "user" && user_name == $username]{
       _id
     }`,
-      { username: user }
-    );
-  };
+    { username: user }
+  );
+};
 
-  functions.createPost = (user, caption, image) => {
-    return sanityClient.assets
-      .upload("image", createReadStream(image.path), {
-        filename: basename(image.path),
+functions.createPost = (user, caption, image) => {
+  return sanityClient.assets
+    .upload("image", createReadStream(image.path), {
+      filename: basename(image.path),
+    })
+    .then((data) =>
+      functions.getUserId(user).then((ids) => {
+        const id = ids[0]._id;
+        return sanityClient.create({
+          _type: "post",
+          author: { _ref: id },
+          photo: { asset: { _ref: data._id } },
+          description: caption,
+          created_at: new Date(),
+        });
       })
-      .then((data) =>
-        functions.getUserId(user).then((ids) => {
-          const id = ids[0]._id;
-          return sanityClient.create({
-            _type: "post",
-            author: { _ref: id },
-            photo: { asset: { _ref: data._id } },
-            description: caption,
-            created_at: new Date(),
-          });
-        })
-      );
-  };
+    );
+};
 
-  functions.getAllPosts = () => {
-    return sanityClient.fetch(`*[_type == "post" ]{
+functions.getAllPosts = () => {
+  return sanityClient.fetch(`*[_type == "post"] [0..49] | order(_createdAt desc){
       ...,
       "username": author->user_name,
       photo{
@@ -70,11 +70,11 @@
         }
       }
     }`);
-  };
+};
 
-  functions.getPostsOfFollowing = (username) => {
-    return sanityClient.fetch(
-      `*[_type == "user" && user_name == $username]{
+functions.getPostsOfFollowing = (username) => {
+  return sanityClient.fetch(
+    `*[_type == "user" && user_name == $username] [0..49] | order(_createdAt desc){
       following[]->{
         "posts": *[_type == "post" && references(^._id)]{
           ...,
@@ -88,13 +88,13 @@
         }
       }
     }`,
-      { username }
-    );
-  };
+    { username }
+  );
+};
 
-  functions.searchForUsername = (text) => {
-    return sanityClient.fetch(
-      `*[_type == "user" && user_name match "${text}*"]{
+functions.searchForUsername = (text) => {
+  return sanityClient.fetch(
+    `*[_type == "user" && user_name match "${text}*"]{
         ...,
         "followers": count(*[_type == "user" && references(^._id)]),
         photo{
@@ -104,12 +104,12 @@
           }
         }
       }`
-    );
-  };
+  );
+};
 
-  functions.getPosts = (username) => {
-    return sanityClient.fetch(
-      `*[_type == "post" && author-> user_name == $username]{
+functions.getPosts = (username) => {
+  return sanityClient.fetch(
+    `*[_type == "post" && author-> user_name == $username]{
       ...,
       "user_name" :author->user_name,
       photo{
@@ -119,62 +119,62 @@
         }
       }
     }`,
-      { username }
-    );
-  };
+    { username }
+  );
+};
 
-  functions.updateProfile = (user, first_name, last_name, bio, image) => {
-    if (image) {
-      return sanityClient.assets
-        .upload("image", createReadStream(image.path), {
-          filename: basename(image.path),
-        })
-        .then((data) =>
-          functions.getUserId(user).then((ids) =>
-            sanityClient
-              .patch(ids[0]._id)
-              .set({
-                first_name,
-                last_name,
-                bio,
-                photo: { asset: { _ref: data._id } },
-              })
-              .commit()
-          )
-        );
-    } else {
-      return functions.getUserId(user).then((ids) =>
-        sanityClient
-          .patch(ids[0]._id)
-          .set({
-            first_name,
-            last_name,
-            bio,
-          })
-          .commit()
+functions.updateProfile = (user, first_name, last_name, bio, image) => {
+  if (image) {
+    return sanityClient.assets
+      .upload("image", createReadStream(image.path), {
+        filename: basename(image.path),
+      })
+      .then((data) =>
+        functions.getUserId(user).then((ids) =>
+          sanityClient
+            .patch(ids[0]._id)
+            .set({
+              first_name,
+              last_name,
+              bio,
+              photo: { asset: { _ref: data._id } },
+            })
+            .commit()
+        )
       );
-    }
-  };
-
-  functions.addFollower = (user, followingId) => {
+  } else {
     return functions.getUserId(user).then((ids) =>
       sanityClient
         .patch(ids[0]._id)
-        .setIfMissing({ following: [] })
-        .insert("after", "following[-1]", [
-          { _ref: followingId, _key: nanoid(), _type: "reference" },
-        ])
+        .set({
+          first_name,
+          last_name,
+          bio,
+        })
         .commit()
     );
-  };
+  }
+};
 
-  functions.removeFollower = (user, followingId) => {
-    return functions.getUserId(user).then((ids) =>
-      sanityClient
-        .patch(ids[0]._id)
-        .unset([`following[_ref=="${followingId}"]`])
-        .commit()
-    );
-  };
+functions.addFollower = (user, followingId) => {
+  return functions.getUserId(user).then((ids) =>
+    sanityClient
+      .patch(ids[0]._id)
+      .setIfMissing({ following: [] })
+      .insert("after", "following[-1]", [
+        { _ref: followingId, _key: nanoid(), _type: "reference" },
+      ])
+      .commit()
+  );
+};
 
-  export default functions;
+functions.removeFollower = (user, followingId) => {
+  return functions.getUserId(user).then((ids) =>
+    sanityClient
+      .patch(ids[0]._id)
+      .unset([`following[_ref=="${followingId}"]`])
+      .commit()
+  );
+};
+
+export default functions;
